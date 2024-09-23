@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @id @unique
+  userId       String
+  expires      DateTime
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  userId        String         @unique
+  username      String
+  emailVerified DateTime?
+  image         String?
+  wallet        String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  tgFirstName   String?
+  accounts      Account[]
+  sessions      Session[]
+  UserRaids     UserRaids[]
+  TelegramUser  TelegramUser[]
+}
+
+model TelegramUser {
+  id        String @id @default(uuid())
+  userId    String @unique
+  username  String
+  firstName String
+  User      User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserRaids {
+  id        String     @id @default(uuid())
+  raidId    String
+  userId    String
+  raidProof String     @unique
+  status    RaidStatus @default(PENDING)
+  points    Int        @default(0)
+  raids     Raids      @relation(fields: [raidId], references: [id], onDelete: Cascade)
+  users     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([raidId])
+}
+
+model Raids {
+  id         String      @id @default(uuid())
+  link       String      @unique
+  createdAt  DateTime    @db.Timestamp(6)
+  validUntil DateTime    @db.Timestamp(6)
+  text       String      @default("")
+  usersRaids UserRaids[]
+}
+
+model Kols {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  twitterId   String   @unique
+  lastTweet   DateTime @db.Timestamp(6)
+  scrap       Boolean  @default(true)
+  followers   Int      @default(0)
+  blacklisted Boolean  @default(false)
+}
+
+model KolsTweets {
+  id        String   @id @default(uuid())
+  kolId     String
+  tweetId   String
+  tweetText String
+  tweetDate DateTime @db.Date
+  notified  Boolean  @default(false)
+}
+
+enum RaidStatus {
+  PENDING
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+}
